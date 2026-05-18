@@ -1,6 +1,7 @@
 """Interface grafica principal do CHD Batch Converter."""
 
 from pathlib import Path
+import os
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -71,7 +72,9 @@ class MainWindow(QMainWindow):
 
         found_chdman = find_chdman()
         self.chdman_path = str(found_chdman) if found_chdman else self.settings.get("chdman_path", "")
-        self.output_folder = self.settings.get("output_folder") or str(default_output_path())
+        self.output_folder = str(default_output_path())
+        self.settings["output_folder"] = self.output_folder
+        save_settings(self.settings)
         self.current_folder = self.settings.get("last_folder", "")
 
         self._build_ui()
@@ -476,6 +479,19 @@ class MainWindow(QMainWindow):
         self.convert_selected_button.setEnabled(True)
         self.status_label.setText("Conversao finalizada")
         self.add_log("Fila de conversao finalizada.")
+        answer = QMessageBox.question(
+            self,
+            "Conversao finalizada",
+            "Conversoes concluidas. Deseja abrir a pasta de destino?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            try:
+                Path(self.output_folder).mkdir(parents=True, exist_ok=True)
+                os.startfile(self.output_folder)
+            except OSError as exc:
+                QMessageBox.warning(self, "Falha ao abrir pasta", f"Nao foi possivel abrir a pasta destino: {exc}")
 
     def _save_parallel_setting(self, value):
         self.settings["parallel_jobs"] = str(value)

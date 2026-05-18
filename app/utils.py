@@ -30,7 +30,7 @@ def app_base_path():
 
 def default_output_path():
     """Retorna a pasta padrao de destino dos CHDs."""
-    return app_base_path() / DEFAULT_OUTPUT_DIR_NAME
+    return Path.home() / "Documents" / DEFAULT_OUTPUT_DIR_NAME
 
 
 def config_path():
