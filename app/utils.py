@@ -7,6 +7,7 @@ validacao de CUE/BIN e persistencia leve das ultimas pastas usadas.
 
 from pathlib import Path
 import os
+import shutil
 import sys
 
 
@@ -73,16 +74,72 @@ def save_settings(settings):
         pass
 
 
-def find_chdman():
-    """Procura chdman.exe na pasta do aplicativo e retorna Path ou None."""
+def _find_chdman_in_tree(root, max_depth=2):
+    """Procura chdman.exe de forma limitada em uma arvore de pastas."""
+    root = Path(root)
+    if not root.exists() or not root.is_dir():
+        return None
+
+    try:
+        for current_root, dirs, files in os.walk(root):
+            rel = Path(current_root).resolve().relative_to(root.resolve())
+            if len(rel.parts) > max_depth:
+                dirs[:] = []
+                continue
+            for file_name in files:
+                if file_name.lower() == "chdman.exe":
+                    return Path(current_root) / file_name
+    except OSError:
+        return None
+    return None
+
+
+def find_chdman(extra_roots=None):
+    """Procura chdman.exe automaticamente em locais provaveis e no PATH."""
+    extra_roots = extra_roots or []
     candidates = [
         app_base_path() / "chdman.exe",
+        app_base_path() / "_internal" / "chdman.exe",
         Path(__file__).resolve().parent / "chdman.exe",
         Path.cwd() / "chdman.exe",
     ]
+
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "chdman.exe")
+
     for candidate in candidates:
         if candidate.exists() and candidate.name.lower() == "chdman.exe":
             return candidate
+
+    which_path = shutil.which("chdman.exe") or shutil.which("chdman")
+    if which_path:
+        return Path(which_path)
+
+    home = Path.home()
+    search_roots = [
+        app_base_path(),
+        app_base_path() / "_internal",
+        Path.cwd(),
+        home / "Downloads",
+        home / "Desktop",
+        home / "Documents",
+    ]
+    search_roots.extend(Path(root) for root in extra_roots if root)
+
+    seen = set()
+    for root in search_roots:
+        try:
+            key = str(Path(root).resolve()).lower()
+        except OSError:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        found = _find_chdman_in_tree(root, max_depth=2)
+        if found:
+            return found
+
     return None
 
 

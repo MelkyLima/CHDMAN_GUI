@@ -1,10 +1,8 @@
 """Interface grafica principal do CHD Batch Converter."""
 
 from pathlib import Path
-import os
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -76,43 +74,10 @@ class MainWindow(QMainWindow):
         self.output_folder = self.settings.get("output_folder") or str(default_output_path())
         self.current_folder = self.settings.get("last_folder", "")
 
-        self._build_actions()
         self._build_ui()
         self._connect_signals()
-        self._update_chdman_label()
-        self._update_output_label()
 
         QTimer.singleShot(250, self._warn_if_chdman_missing)
-
-    def _build_actions(self):
-        """Cria o menu superior simples."""
-        menu_file = self.menuBar().addMenu("Arquivo")
-
-        select_folder = QAction("Selecionar Pasta", self)
-        select_folder.triggered.connect(self.select_folder)
-        menu_file.addAction(select_folder)
-
-        select_chdman = QAction("Selecionar chdman.exe", self)
-        select_chdman.triggered.connect(self.select_chdman)
-        menu_file.addAction(select_chdman)
-
-        select_output = QAction("Selecionar pasta destino", self)
-        select_output.triggered.connect(self.select_output_folder)
-        menu_file.addAction(select_output)
-
-        menu_file.addSeparator()
-        exit_action = QAction("Sair", self)
-        exit_action.triggered.connect(self.close)
-        menu_file.addAction(exit_action)
-
-        menu_selection = self.menuBar().addMenu("Selecao")
-        select_all = QAction("Marcar todos", self)
-        select_all.triggered.connect(lambda: self._set_all_checked(True))
-        menu_selection.addAction(select_all)
-
-        clear_selection = QAction("Desmarcar todos", self)
-        clear_selection.triggered.connect(lambda: self._set_all_checked(False))
-        menu_selection.addAction(clear_selection)
 
     def _build_ui(self):
         """Monta a interface em barra superior, tabela central e painel inferior."""
@@ -135,15 +100,8 @@ class MainWindow(QMainWindow):
         self.folder_label.setObjectName("mutedLabel")
         top_layout.addWidget(self.folder_label, 1)
 
-        self.chdman_label = QLabel()
-        self.chdman_label.setObjectName("mutedLabel")
-        top_layout.addWidget(self.chdman_label)
-
-        self.output_label = QLabel()
-        self.output_label.setObjectName("mutedLabel")
-        top_layout.addWidget(self.output_label)
-
-        self.select_folder_button = QPushButton("Selecionar Pasta")
+        self.select_folder_button = QPushButton("SELECIONE A PASTA DOS JOGOS EM FORMATO BIN/CUE")
+        self.select_folder_button.setToolTip("Se o arquivo .cue nao existir, ele sera criado automaticamente.")
         self.select_folder_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         self.select_folder_button.clicked.connect(self.select_folder)
         top_layout.addWidget(self.select_folder_button)
@@ -292,7 +250,6 @@ class MainWindow(QMainWindow):
         self.chdman_path = file_path
         self.settings["chdman_path"] = file_path
         save_settings(self.settings)
-        self._update_chdman_label()
         self.add_log(f"chdman configurado: {file_path}")
 
     def select_output_folder(self):
@@ -305,13 +262,20 @@ class MainWindow(QMainWindow):
         self.output_folder = folder
         self.settings["output_folder"] = folder
         save_settings(self.settings)
-        self._update_output_label()
         self.add_log(f"Pasta destino configurada: {folder}")
         if self.current_folder:
             self.start_scan(self.current_folder)
 
     def start_scan(self, folder):
         """Limpa resultados atuais e inicia uma nova varredura."""
+        if not self._has_valid_chdman():
+            auto_found = find_chdman(extra_roots=[folder])
+            if auto_found:
+                self.chdman_path = str(auto_found)
+                self.settings["chdman_path"] = self.chdman_path
+                save_settings(self.settings)
+                self.add_log(f"chdman encontrado automaticamente: {self.chdman_path}")
+
         if self.scan_worker and self.scan_worker.is_alive():
             self.scan_worker.cancel()
 
@@ -519,15 +483,6 @@ class MainWindow(QMainWindow):
 
     def _has_valid_chdman(self):
         return bool(self.chdman_path and Path(self.chdman_path).exists())
-
-    def _update_chdman_label(self):
-        if self._has_valid_chdman():
-            self.chdman_label.setText(f"chdman: {os.path.basename(self.chdman_path)}")
-        else:
-            self.chdman_label.setText("chdman nao configurado")
-
-    def _update_output_label(self):
-        self.output_label.setText(f"destino: {os.path.basename(self.output_folder) or self.output_folder}")
 
     def _warn_if_chdman_missing(self):
         if self._has_valid_chdman():
