@@ -24,7 +24,7 @@ Janela: **CHD Batch Converter - BIN/CUE para CHD**
 
 - Windows 10/11
 - Python 3.10+
-- `chdman.exe` (MAME CHD tools)
+- `chdman.exe` incluso neste repositório (raiz do projeto)
 
 ## Como executar em desenvolvimento
 
@@ -34,8 +34,7 @@ Janela: **CHD Batch Converter - BIN/CUE para CHD**
 pip install -r requirements.txt
 ```
 
-2. Coloque `chdman.exe` na pasta raiz do projeto ou selecione manualmente no app.
-3. Execute:
+2. Execute:
 
 ```powershell
 python app/main.py
@@ -66,7 +65,13 @@ pip install pyinstaller
 .\build.ps1
 ```
 
-O executavel sera gerado em `dist`.
+O executavel sera gerado em `dist` com o `chdman.exe` embutido.
+
+## Redistribuicao do chdman.exe
+
+Este projeto inclui `chdman.exe` para facilitar uso e build. Antes de redistribuir
+binarios ou publicar forks, valide os termos de licenciamento e redistribuicao
+aplicaveis ao `chdman.exe` (ferramentas CHD do ecossistema MAME).
 
 ## Qualidade e testes
 
